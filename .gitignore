@@ -1,207 +1,182 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[codz]
-*$py.class
+#!/usr/bin/env python3
+"""
+Random Joke Generator (uses external JokeAPI)
 
-# C extensions
-*.so
+Usage:
+    1. Install dependencies:
+        pip install requests
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+    2. Run:
+        python random_joke_generator.py
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
+This script opens a small Tkinter window with:
+ - "Get Joke" button to fetch a random joke from https://v2.jokeapi.dev
+ - A text area showing the joke (handles single-line and two-part jokes)
+ - "Copy" button to copy the joke to clipboard
+ - Basic error handling and retry button if network/API fails
+"""
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+import tkinter as tk
+from tkinter import messagebox, scrolledtext
+import requests
+import threading
+import sys
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py.cover
-.hypothesis/
-.pytest_cache/
-cover/
+JOKEAPI_URL = "https://v2.jokeapi.dev/joke/Any"
+# Avoid potentially offensive categories with blacklistFlags, accept both single & twopart
+DEFAULT_PARAMS = {
+    "blacklistFlags": "nsfw,religious,political,racist,sexist,explicit",
+    # allow either single or twopart
+    # (JokeAPI returns type field telling which one)
+}
 
-# Translations
-*.mo
-*.pot
+class JokeApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Random Joke Generator")
+        self.root.geometry("520x300")
+        self.root.resizable(False, False)
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
+        frame = tk.Frame(root, padx=10, pady=10)
+        frame.pack(fill=tk.BOTH, expand=True)
 
-# Flask stuff:
-instance/
-.webassets-cache
+        btn_frame = tk.Frame(frame)
+        btn_frame.pack(fill=tk.X, pady=(0, 8))
 
-# Scrapy stuff:
-.scrapy
+        self.get_btn = tk.Button(btn_frame, text="Get Joke", command=self.get_joke_thread, width=12)
+        self.get_btn.pack(side=tk.LEFT)
 
-# Sphinx documentation
-docs/_build/
+        self.copy_btn = tk.Button(btn_frame, text="Copy", command=self.copy_joke, width=8, state=tk.DISABLED)
+        self.copy_btn.pack(side=tk.LEFT, padx=(8, 0))
 
-# PyBuilder
-.pybuilder/
-target/
+        self.clear_btn = tk.Button(btn_frame, text="Clear", command=self.clear_text, width=8)
+        self.clear_btn.pack(side=tk.LEFT, padx=(8, 0))
 
-# Jupyter Notebook
-.ipynb_checkpoints
+        self.status_label = tk.Label(btn_frame, text="Ready", anchor="w")
+        self.status_label.pack(side=tk.LEFT, padx=(12,0))
 
-# IPython
-profile_default/
-ipython_config.py
+        self.text = scrolledtext.ScrolledText(frame, wrap=tk.WORD, height=12, font=("Segoe UI", 10))
+        self.text.pack(fill=tk.BOTH, expand=True)
+        self.text.configure(state=tk.DISABLED)
 
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
+        # Allow Enter to fetch new joke
+        root.bind("<Return>", lambda e: self.get_joke_thread())
 
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
+    def set_status(self, txt):
+        self.status_label.config(text=txt)
 
-# UV
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#uv.lock
+    def enable_buttons(self, enabled=True):
+        state = tk.NORMAL if enabled else tk.DISABLED
+        self.get_btn.config(state=state)
+        # copy enabled only if there's text
+        self.copy_btn.config(state=tk.NORMAL if enabled and self.has_joke_text() else tk.DISABLED)
 
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
-#poetry.toml
+    def has_joke_text(self):
+        return bool(self.get_text().strip())
 
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
-#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
-#pdm.lock
-#pdm.toml
-.pdm-python
-.pdm-build/
+    def get_text(self):
+        return self.text.get("1.0", tk.END).rstrip("\n")
 
-# pixi
-#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
-#pixi.lock
-#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
-#   in the .venv directory. It is recommended not to include this directory in version control.
-.pixi
+    def clear_text(self):
+        self.text.configure(state=tk.NORMAL)
+        self.text.delete("1.0", tk.END)
+        self.text.configure(state=tk.DISABLED)
+        self.copy_btn.config(state=tk.DISABLED)
+        self.set_status("Cleared")
 
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
+    def copy_joke(self):
+        joke = self.get_text()
+        if not joke.strip():
+            return
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(joke)
+            self.set_status("Copied to clipboard")
+        except Exception as e:
+            messagebox.showerror("오류", f"클립보드에 복사할 수 없습니다:\n{e}")
 
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
+    def get_joke_thread(self):
+        # run network call on background thread to avoid freezing UI
+        thread = threading.Thread(target=self.fetch_and_display_joke, daemon=True)
+        thread.start()
 
-# SageMath parsed files
-*.sage.py
+    def fetch_and_display_joke(self):
+        self.enable_buttons(False)
+        self.set_status("Fetching joke...")
+        try:
+            resp = requests.get(JOKEAPI_URL, params=DEFAULT_PARAMS, timeout=8)
+            resp.raise_for_status()
+            data = resp.json()
+            joke_text = self.render_joke_from_api(data)
+            self.display_joke(joke_text)
+            self.set_status("Fetched")
+        except requests.RequestException as e:
+            self.display_joke("")
+            self.set_status("Network error")
+            # show error and provide retry
+            retry = messagebox.askretrycancel("네트워크 오류", f"농담을 가져오지 못했습니다:\n{e}\n\n다시 시도하시겠습니까?")
+            if retry:
+                self.get_joke_thread()
+        except Exception as e:
+            self.display_joke("")
+            self.set_status("Error")
+            messagebox.showerror("오류", f"예상치 못한 오류가 발생했습니다:\n{e}")
+        finally:
+            self.enable_buttons(True)
 
-# Environments
-.env
-.envrc
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+    def render_joke_from_api(self, data):
+        """
+        JokeAPI response structure examples:
+            Single:
+                { "category": "...", "type": "single", "joke": "...", ... }
+            Two-part:
+                { "category": "...", "type": "twopart", "setup": "...", "delivery": "...", ... }
+        """
+        if not isinstance(data, dict):
+            raise ValueError("Invalid API response")
 
-# Spyder project settings
-.spyderproject
-.spyproject
+        if data.get("error"):
+            # API indicates error: return message field or raise
+            return f"(API error) {data.get('message', 'Unknown error from API')}"
 
-# Rope project settings
-.ropeproject
+        typ = data.get("type", "")
+        if typ == "single":
+            return data.get("joke", "(no joke returned)")
+        elif typ == "twopart":
+            setup = data.get("setup", "")
+            delivery = data.get("delivery", "")
+            # Format with a blank line between setup and punchline
+            return f"{setup}\n\n{delivery}"
+        else:
+            # fallback: try text fields
+            return data.get("joke") or f"{data.get('setup', '')}\n\n{data.get('delivery', '')}" or str(data)
 
-# mkdocs documentation
-/site
+    def display_joke(self, joke_text):
+        # UI updates must be done in main thread
+        def _update():
+            self.text.configure(state=tk.NORMAL)
+            self.text.delete("1.0", tk.END)
+            if joke_text:
+                self.text.insert(tk.END, joke_text)
+                self.copy_btn.config(state=tk.NORMAL)
+            else:
+                self.text.insert(tk.END, "(농담 없음)")
+                self.copy_btn.config(state=tk.DISABLED)
+            self.text.configure(state=tk.DISABLED)
+        self.root.after(0, _update)
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
 
-# Pyre type checker
-.pyre/
+def main():
+    # check requests availability
+    try:
+        import requests  # already imported above; this also ensures module is available
+    except Exception:
+        print("This program requires the 'requests' package. Install with:\n    pip install requests", file=sys.stderr)
+        sys.exit(1)
 
-# pytype static type analyzer
-.pytype/
+    root = tk.Tk()
+    app = JokeApp(root)
+    root.mainloop()
 
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
-
-# Abstra
-# Abstra is an AI-powered process automation framework.
-# Ignore directories containing user credentials, local state, and settings.
-# Learn more at https://abstra.io/docs
-.abstra/
-
-# Visual Studio Code
-#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
-#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
-#  you could uncomment the following to ignore the entire vscode folder
-# .vscode/
-
-# Ruff stuff:
-.ruff_cache/
-
-# PyPI configuration file
-.pypirc
-
-# Cursor
-#  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
-#  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
-#  refer to https://docs.cursor.com/context/ignore-files
-.cursorignore
-.cursorindexingignore
-
-# Marimo
-marimo/_static/
-marimo/_lsp/
-__marimo__/
+if __name__ == "__main__":
+    main()
