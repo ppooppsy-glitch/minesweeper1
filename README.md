@@ -1,76 +1,74 @@
-# Random Joke Generator (Tkinter)
+# 지뢰찾기 (Minesweeper) — Windows용 Python (Tkinter)
 
-간단한 데스크탑용 지뢰찾기 게임 생성기입니다.  
-Python과 Tkinter로 구현된 GUI 앱으로 외부 API (JokeAPI: https://v2.jokeapi.dev)를 사용해 지뢰찾기 게임을 가져옵니다.
+간단한 데스크탑 지뢰찾기 게임입니다. Python과 표준 라이브러리 Tkinter만으로 구현된 단일 파일 프로그램으로, Windows 환경에서 바로 실행할 수 있습니다.
 
 ## 주요 기능
-- "Get Joke" 버튼으로 외부 API에서 랜덤 농담을 가져오기
-- Single-line 또는 Two-part(Setup + Delivery) 농담 지원
-- 스크롤 가능한 텍스트 영역에 농담 표시
-- "Copy" 버튼으로 클립보드에 복사
-- "Clear" 버튼으로 텍스트 지우기
-- Enter 키로 농담 가져오기 가능
-- 네트워크 오류 시 재시도 옵션 표시
+- 초급(9x9, 10지뢰) / 중급(16x16, 40지뢰) / 고급(16x30, 99지뢰) 및 사용자 지정 설정 지원
+- 왼쪽 클릭: 칸 열기
+- 오른쪽 클릭: 깃발(Flag) 토글
+- 더블클릭(또는 숫자 클릭): 주변 자동 오픈 (주변 깃발 수가 숫자와 같으면)
+- 첫 클릭은 항상 안전 (첫 클릭 시 지뢰 재배치)
+- 타이머, 남은 지뢰 표시, 승리/패배 처리
+- 간단한 UI (스마일 버튼으로 새 게임 시작)
 
 ## 요구사항
-- Python 3.7 이상
-- requests 패키지
-- 표준 라이브러리의 tkinter (대부분의 Python 설치에 기본 포함)
+- Python 3.7 이상 권장
+- tkinter: 대부분의 Python 배포판에 기본 포함되어 있습니다. (Windows 표준 설치에 포함)
+- 별도 외부 패키지 불필요
 
-## 설치
-1. (선택) 가상환경 생성 및 활성화
-   ```bash
-   python -m venv .venv
-   # Windows
-   .venv\Scripts\activate
-   # macOS / Linux
-   source .venv/bin/activate
-   ```
+## 설치 및 실행
+1. Python이 설치되어 있는지 확인:
+   - 명령 프롬프트에서:
+     python --version
 
-2. 의존성 설치
-   ```bash
-   pip install requests
-   ```
+2. 저장:
+   - 제공된 코드를 minesweeper.py 파일로 저장하세요.
 
-3. 저장된 스크립트 실행
-   ```bash
-   python random_joke_generator.py
-   ```
+3. 실행:
+   - 명령 프롬프트에서 해당 파일이 있는 디렉터리로 이동한 뒤:
+     python minesweeper.py
 
-## 사용법
-- 앱 창이 열리면 "Get Joke"을 누르세요. 네트워크를 통해 JokeAPI에서 농담을 받아와 텍스트 영역에 표시합니다.
-- Two-part 농담인 경우 setup과 delivery가 빈 줄로 구분되어 표시됩니다.
-- "Copy" 버튼을 눌러 현재 표시된 농담을 클립보드로 복사하세요.
-- "Clear" 버튼으로 텍스트 영역을 초기화하세요.
-- 네트워크 오류가 발생하면 재시도할지 물어보는 대화상자가 나옵니다.
+## 사용 방법 (단축)
+- 난이도 드롭다운에서 원하는 난이도를 선택하거나 "사용자 지정"으로 행/열/지뢰 수를 입력합니다.
+- 스마일(🙂) 버튼을 누르거나 난이도를 변경하면 새 게임이 시작됩니다.
+- 왼쪽 클릭: 칸 열기
+- 오른쪽 클릭: 깃발 토글 (우클릭)
+- 더블 클릭: 숫자칸에서 주변 깃발 수가 숫자와 같으면 주변 칸 자동 오픈
+- 화면 상단에 남은 지뢰 수와 경과 시간이 표시됩니다.
 
-## API 정보 및 필터
-이 프로젝트는 https://v2.jokeapi.dev 를 사용합니다. 기본 파라미터로 아래 카테고리를 블랙리스트 처리하여 불쾌할 수 있는 콘텐츠를 배제합니다:
-- nsfw, religious, political, racist, sexist, explicit
+## 사용자 지정 옵션
+- 사용자 지정을 선택하면 행(5–30), 열(5–50), 지뢰 수(1–행*열-1)을 입력할 수 있습니다.
+- 필요 시 버튼 스타일, 글꼴, 색상 등을 코드에서 조정할 수 있습니다.
 
-필요에 따라 코드 내 DEFAULT_PARAMS를 수정하여 카테고리를 조정할 수 있습니다.
+## 패키징(선택)
+- exe 파일로 배포하려면 PyInstaller 사용을 권장합니다.
+  1. PyInstaller 설치:
+     pip install pyinstaller
+  2. exe 생성 (한 파일로 묶기):
+     pyinstaller --onefile --windowed minesweeper.py
+  3. dist 폴더 아래에 생성된 minesweeper.exe를 배포하세요.
 
-## 예시 (스크립트 내부 동작 요약)
-- 네트워크 호출은 UI가 멈추지 않도록 백그라운드 스레드에서 수행됩니다.
-- API 응답 타입이 `single` 또는 `twopart`인지 확인하여 적절히 포맷합니다.
-- UI 업데이트는 메인 스레드에서 안전하게 수행됩니다.
+참고: --windowed 옵션은 콘솔 창 없이 GUI만 실행되도록 합니다.
 
 ## 문제 해결
-- "requests" 패키지 관련 오류: pip로 설치했는지 확인하세요.
-- tkinter 관련 오류: 일부 경량 Python 배포판(특히 Windows의 일부 빌드)에는 tkinter가 포함되어 있지 않을 수 있습니다. Python 설치 시 "tkinter" 옵션을 포함하도록 설치하거나 운영체제 패키지 매니저로 설치하세요.
-- 네트워크 / 방화벽: 외부 API에 접근이 차단되어 있으면 농담을 가져올 수 없습니다. 프록시/방화벽 설정을 확인하세요.
+- tkinter 관련 오류:
+  - 일부 경량 Python 설치에는 tkinter가 포함되지 않을 수 있습니다. 이 경우 공식 Python 설치 관리자를 이용해 "tcl/tk and IDLE" 옵션을 포함하거나 운영체제 패키지 매니저로 tkinter를 설치하세요.
+- 우클릭이 작동하지 않을 때:
+  - Windows에서는 기본적으로 우클릭 이벤트가 <Button-3>으로 바인딩되어 있습니다. 다른 플랫폼(예: macOS)에서는 이벤트 매핑이 다를 수 있습니다.
+- 해상도/글꼴 문제:
+  - 버튼 크기(width/height)나 글꼴(font=("Helvetica", 12, "bold"))을 조정해 보세요.
 
 ## 확장 아이디어
-- 카테고리 선택 UI 추가 (Programming, Misc, Dark 등)
-- 로컬 캐시 또는 히스토리 저장
-- 언어 필터/번역 기능 추가
-- 웹 버전(Flask/FastAPI) 또는 콘솔 버전 생성
-- exe로 패키징(PyInstaller)해 배포
+- 최고 기록(스코어) 저장 및 표시 (로컬 파일 또는 SQLite)
+- 사운드 효과(오픈, 폭발, 승리)
+- 더 나은 아이콘/이미지 사용 (플래그/지뢰 아이콘)
+- 멀티스레딩 없이 애니메이션/효과 개선
+- 난이도별 통계 및 히스토리 저장
 
 ## 라이선스
-MIT License — 자유롭게 사용/수정/배포 가능합니다. 원작자 표시는 감사하지만 필수는 아닙니다.
+MIT License — 자유롭게 사용, 수정, 재배포 가능합니다.
 
 ## 파일
-- random_joke_generator.py — Tkinter GUI 메인 스크립트 (이 프로젝트의 핵심 파일)
+- minesweeper.py — 메인 실행 파일 (Tkinter 기반)
 
-감사합니다! 즐거운 농담 시간 되세요 :)
+즐겁게 플레이하세요!
